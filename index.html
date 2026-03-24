@@ -641,30 +641,28 @@ button { font-family: inherit; }
         <button class="modal-submit" onclick="goStep2()">下一步：去付款 →</button>
       </div>
 
-      <!-- Step 2: 扫码付款 -->
+      <!-- Step 2: 跳转支付 -->
       <div id="step2" style="display:none">
-        <div class="qr-box">
-          <div class="qr-amount" id="qrAmount">¥0</div>
-          <div style="font-size:13px;color:var(--text-sec);margin-bottom:14px" id="qrPayType">微信扫码付款</div>
-          <div class="qr-img" id="qrImg">
-            <span style="font-size:13px;color:#aaa;text-align:center;padding:10px">
-              请在此处放置<br>你的收款二维码图片
-            </span>
+        <div style="text-align:center;padding:10px 0 18px">
+          <div style="font-size:32px;margin-bottom:10px">💳</div>
+          <div id="qrAmount" style="font-size:28px;font-weight:800;color:var(--orange);margin-bottom:6px">¥0</div>
+          <div id="qrPayType" style="font-size:13px;color:var(--text-sec);margin-bottom:18px">微信/支付宝扫码付款</div>
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px 16px;margin-bottom:16px;text-align:left">
+            <div style="font-size:13px;font-weight:600;color:#166534;margin-bottom:8px">🔒 安全支付流程</div>
+            <div style="font-size:12px;color:#166534;line-height:1.9">
+              ① 点击下方按钮跳转到支付页面<br>
+              ② 使用微信或支付宝扫码付款<br>
+              ③ 付款成功后系统自动验证并发货<br>
+              ④ 账号信息将直接显示在页面上
+            </div>
           </div>
-          <div class="qr-tip">
-            请使用 <strong id="qrAppName">微信</strong> 扫描上方二维码<br>
-            付款金额：<strong id="qrAmountTip">¥0</strong>，请勿多付或少付
+          <div class="delivery-warn" style="margin-bottom:16px">
+            <div class="delivery-warn-icon">⚠️</div>
+            <div>付款后请勿关闭页面，系统将自动处理发货。</div>
           </div>
         </div>
-        <div class="delivery-warn" style="margin-bottom:16px">
-          <div class="delivery-warn-icon">⚠️</div>
-          <div>付款完成后点击下方按钮，系统将自动为您发货。<br>如付款后未收到账号，请保存订单号联系客服。</div>
-        </div>
-        <div class="field">
-          <label>确认付款金额（必填，防止乌龙）</label>
-          <input type="number" id="confirmAmount" placeholder="请输入您实际付款的金额" step="0.01">
-        </div>
-        <button class="modal-submit btn-green" onclick="goStep3()">✅ 我已付款，立即发货</button>
+        <button class="modal-submit btn-green" id="payNowBtn" onclick="doPayNow()">💳 立即前往支付</button>
+        <button id="manualConfirmBtn" class="btn-secondary btn-green" style="margin-top:10px;display:none" onclick="confirmPaidManual()">✅ 我已完成付款，领取账号</button>
         <button class="btn-secondary" style="margin-top:10px" onclick="goStep1()">← 返回修改</button>
       </div>
 
@@ -737,9 +735,14 @@ const db = supabase.createClient(SURL, SKEY);
 
 // ===== 配置区（店主修改这里）=====
 const CONFIG = {
-  wxQR: '',   // 填你的微信收款码图片URL
-  aliQR: '',  // 填你的支付宝收款码图片URL
-  // TG客服链接（已配置）
+  // ===== 易支付配置 =====
+  payUrl: 'https://pay.yixuyun.com/',   // 接口地址
+  pid: '1053',                           // 商户ID
+  key: 'E5WdnedleEDSxedHMcNH7EhQzh7eD7D7', // MD5密钥
+  // 支付回调地址（Vercel部署后填你的域名）
+  notifyUrl: 'https://redme-store.vercel.app/notify.php',
+  returnUrl: 'https://redme-store.vercel.app/',
+  // TG客服
   serviceWx: 'https://t.me/Redmestore21',
   tgLink: 'https://t.me/Redmestore21',
   tgUsername: '@Redmestore21',
@@ -943,31 +946,133 @@ function showStep(n) {
   }
 }
 
+// MD5 签名函数（用于易支付签名）
+function md5sign(str) {
+  function safeAdd(x,y){var lsw=(x&0xFFFF)+(y&0xFFFF);var msw=(x>>16)+(y>>16)+(lsw>>16);return(msw<<16)|(lsw&0xFFFF);}
+  function bitRotateLeft(num,cnt){return(num<<cnt)|(num>>>(32-cnt));}
+  function md5cmn(q,a,b,x,s,t){return safeAdd(bitRotateLeft(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b);}
+  function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|((~b)&d),a,b,x,s,t);}
+  function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+  function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t);}
+  function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|(~d)),a,b,x,s,t);}
+  var m8=new TextEncoder().encode(str);
+  var l=m8.length*8;
+  var pad=new Uint8Array(Math.ceil((m8.length+9)/64)*64);
+  pad.set(m8);pad[m8.length]=0x80;
+  new DataView(pad.buffer).setUint32(pad.length-4,l,true);
+  var a=1732584193,b=-271733879,c=-1732584194,d=271733878;
+  for(var i=0;i<pad.length;i+=64){
+    var k=new Array(16);for(var j=0;j<16;j++)k[j]=(pad[i+j*4+3]<<24)|(pad[i+j*4+2]<<16)|(pad[i+j*4+1]<<8)|pad[i+j*4];
+    var aa=a,bb=b,cc=c,dd=d;
+    a=md5ff(a,b,c,d,k[0],7,-680876936);d=md5ff(d,a,b,c,k[1],12,-389564586);c=md5ff(c,d,a,b,k[2],17,606105819);b=md5ff(b,c,d,a,k[3],22,-1044525330);
+    a=md5ff(a,b,c,d,k[4],7,-176418897);d=md5ff(d,a,b,c,k[5],12,1200080426);c=md5ff(c,d,a,b,k[6],17,-1473231341);b=md5ff(b,c,d,a,k[7],22,-45705983);
+    a=md5ff(a,b,c,d,k[8],7,1770035416);d=md5ff(d,a,b,c,k[9],12,-1958414417);c=md5ff(c,d,a,b,k[10],17,-42063);b=md5ff(b,c,d,a,k[11],22,-1990404162);
+    a=md5ff(a,b,c,d,k[12],7,1804603682);d=md5ff(d,a,b,c,k[13],12,-40341101);c=md5ff(c,d,a,b,k[14],17,-1502002290);b=md5ff(b,c,d,a,k[15],22,1236535329);
+    a=md5gg(a,b,c,d,k[1],5,-165796510);d=md5gg(d,a,b,c,k[6],9,-1069501632);c=md5gg(c,d,a,b,k[11],14,643717713);b=md5gg(b,c,d,a,k[0],20,-373897302);
+    a=md5gg(a,b,c,d,k[5],5,-701558691);d=md5gg(d,a,b,c,k[10],9,38016083);c=md5gg(c,d,a,b,k[15],14,-660478335);b=md5gg(b,c,d,a,k[4],20,-405537848);
+    a=md5gg(a,b,c,d,k[9],5,568446438);d=md5gg(d,a,b,c,k[14],9,-1019803690);c=md5gg(c,d,a,b,k[3],14,-187363961);b=md5gg(b,c,d,a,k[8],20,1163531501);
+    a=md5gg(a,b,c,d,k[13],5,-1444681467);d=md5gg(d,a,b,c,k[2],9,-51403784);c=md5gg(c,d,a,b,k[7],14,1735328473);b=md5gg(b,c,d,a,k[12],20,-1926607734);
+    a=md5hh(a,b,c,d,k[5],4,-378558);d=md5hh(d,a,b,c,k[8],11,-2022574463);c=md5hh(c,d,a,b,k[11],16,1839030562);b=md5hh(b,c,d,a,k[14],23,-35309556);
+    a=md5hh(a,b,c,d,k[1],4,-1530992060);d=md5hh(d,a,b,c,k[4],11,1272893353);c=md5hh(c,d,a,b,k[7],16,-155497632);b=md5hh(b,c,d,a,k[10],23,-1094730640);
+    a=md5hh(a,b,c,d,k[13],4,681279174);d=md5hh(d,a,b,c,k[0],11,-358537222);c=md5hh(c,d,a,b,k[3],16,-722521979);b=md5hh(b,c,d,a,k[6],23,76029189);
+    a=md5hh(a,b,c,d,k[9],4,-640364487);d=md5hh(d,a,b,c,k[12],11,-421815835);c=md5hh(c,d,a,b,k[15],16,530742520);b=md5hh(b,c,d,a,k[2],23,-995338651);
+    a=md5ii(a,b,c,d,k[0],6,-198630844);d=md5ii(d,a,b,c,k[7],10,1126891415);c=md5ii(c,d,a,b,k[14],15,-1416354905);b=md5ii(b,c,d,a,k[5],21,-57434055);
+    a=md5ii(a,b,c,d,k[12],6,1700485571);d=md5ii(d,a,b,c,k[3],10,-1894986606);c=md5ii(c,d,a,b,k[10],15,-1051523);b=md5ii(b,c,d,a,k[1],21,-2054922799);
+    a=md5ii(a,b,c,d,k[8],6,1873313359);d=md5ii(d,a,b,c,k[15],10,-30611744);c=md5ii(c,d,a,b,k[6],15,-1560198380);b=md5ii(b,c,d,a,k[13],21,1309151649);
+    a=md5ii(a,b,c,d,k[4],6,-145523070);d=md5ii(d,a,b,c,k[11],10,-1120210379);c=md5ii(c,d,a,b,k[2],15,718787259);b=md5ii(b,c,d,a,k[9],21,-343485551);
+    a=safeAdd(a,aa);b=safeAdd(b,bb);c=safeAdd(c,cc);d=safeAdd(d,dd);
+  }
+  return [a,b,c,d].map(function(n){return(n<0?n+4294967296:n).toString(16).padStart(8,'0');}).join('');
+}
+
 function goStep2() {
   if(!curProduct) return;
   const qty = parseInt(document.getElementById('qtyVal').value) || 1;
   const total = (parseFloat(curProduct.price) * qty).toFixed(2);
-
-  // 填充二维码信息
   document.getElementById('qrAmount').textContent = '¥' + total;
-  document.getElementById('qrAmountTip').textContent = '¥' + total;
   const isWx = curPayType === 'wx';
-  document.getElementById('qrPayType').textContent = isWx ? '微信扫码付款' : '支付宝扫码付款';
-  document.getElementById('qrAppName').textContent = isWx ? '微信' : '支付宝';
-
-  // 显示二维码图片
-  const qrUrl = isWx ? CONFIG.wxQR : CONFIG.aliQR;
-  const qrBox = document.getElementById('qrImg');
-  if(qrUrl) {
-    qrBox.innerHTML = '<img src="'+qrUrl+'" style="width:100%;height:100%;object-fit:cover">';
-  } else {
-    qrBox.innerHTML = '<div style="font-size:11px;color:#aaa;text-align:center;padding:12px;line-height:1.6">请在 CONFIG 中<br>配置你的收款码图片</div>';
-  }
-  document.getElementById('confirmAmount').value = '';
+  document.getElementById('qrPayType').textContent = isWx ? '微信支付' : '支付宝支付';
   showStep(2);
 }
 
 function goStep1() { showStep(1); }
+
+// ===== 易支付跳转支付 =====
+function doPayNow() {
+  if(!curProduct) return;
+  const qty = parseInt(document.getElementById('qtyVal').value) || 1;
+  const total = (parseFloat(curProduct.price) * qty).toFixed(2);
+  const contact = document.getElementById('buyContact').value.trim() || 'guest';
+  curOrderNo = 'ORD' + Date.now();
+
+  // 先保存待支付订单
+  saveOrderLocal({
+    order_no: curOrderNo,
+    product_name: curProduct.name,
+    product_id: curProduct.id,
+    total: total,
+    qty: qty,
+    contact: contact,
+    pay_type: curPayType === 'wx' ? '微信' : '支付宝',
+    status: 'pending',
+    account_info: '',
+    created_at: new Date().toLocaleString('zh-CN'),
+  });
+
+  // 保存到 Supabase（待支付状态）
+  db.from('orders').insert({
+    order_no: curOrderNo,
+    product_id: curProduct.id,
+    product_name: curProduct.name,
+    price: curProduct.price,
+    quantity: qty,
+    total: total,
+    contact: contact,
+    status: 'pending',
+    pay_type: curPayType === 'wx' ? '微信' : '支付宝',
+  }).then(function(){}).catch(function(){});
+
+  // 构建易支付签名
+  var payType = curPayType === 'wx' ? 'wxpay' : 'alipay';
+  var params = {
+    pid: CONFIG.pid,
+    type: payType,
+    out_trade_no: curOrderNo,
+    notify_url: CONFIG.notifyUrl,
+    return_url: CONFIG.returnUrl + '?order=' + curOrderNo,
+    name: curProduct.name.slice(0, 30),
+    money: total,
+  };
+
+  // 按字母顺序拼接签名
+  var keys = Object.keys(params).sort();
+  var signStr = keys.map(function(k){ return k + '=' + params[k]; }).join('&') + CONFIG.key;
+  params.sign = md5sign(signStr);
+  params.sign_type = 'MD5';
+
+  // 构建支付URL并跳转
+  var queryStr = Object.keys(params).map(function(k){
+    return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+  }).join('&');
+  var payUrl = CONFIG.payUrl + 'submit.php?' + queryStr;
+
+  // 记录订单号供回调使用
+  sessionStorage.setItem('pending_order', curOrderNo);
+  sessionStorage.setItem('pending_product_id', curProduct.id);
+
+  // 跳转到支付页面
+  window.open(payUrl, '_blank');
+
+  // 同时显示等待确认状态
+  document.getElementById('payNowBtn').textContent = '⏳ 等待付款中...';
+  document.getElementById('payNowBtn').disabled = true;
+
+  // 显示手动确认按钮（用户付完款回来点）
+  setTimeout(function() {
+    var confirmBtn = document.getElementById('manualConfirmBtn');
+    if(confirmBtn) confirmBtn.style.display = 'block';
+  }, 3000);
+}
 
 // ===== 发货核心逻辑 =====
 async function goStep3() {
@@ -1074,6 +1179,43 @@ function copyDelivery() {
   }).catch(() => {
     prompt('请手动复制以下内容：', full);
   });
+}
+
+// ===== 付款手动确认（用户付完款回来点）=====
+async function confirmPaidManual() {
+  const btn = document.getElementById('manualConfirmBtn');
+  btn.textContent = '⏳ 发货中...'; btn.disabled = true;
+
+  const qty = parseInt(document.getElementById('qtyVal').value) || 1;
+  const total = (parseFloat(curProduct.price) * qty).toFixed(2);
+  const contact = document.getElementById('buyContact').value.trim();
+
+  // 从本地库存池取货
+  let accountInfo = getFromStockPool(curProduct.name);
+
+  // 如果本地没货，尝试 Supabase
+  if(!accountInfo) {
+    const { data: acc } = await db.from('accounts').select('*').eq('product_id', curProduct.id).eq('status','unused').limit(1).single();
+    if(acc) {
+      accountInfo = acc.password ? '账号: ' + acc.account + '\n密码: ' + acc.password : '卡密: ' + acc.account;
+      await db.from('accounts').update({ status:'used', sold_at: new Date().toISOString() }).eq('id', acc.id);
+    }
+  }
+
+  // 更新订单状态
+  if(accountInfo) {
+    await db.from('orders').update({ status:'shipped', account_info: accountInfo }).eq('order_no', curOrderNo);
+    saveOrderLocal({ order_no: curOrderNo, product_name: curProduct.name, total, contact, pay_type: curPayType==='wx'?'微信':'支付宝', status:'shipped', account_info: accountInfo, created_at: new Date().toLocaleString('zh-CN') });
+    document.getElementById('resultOrderNo').textContent = curOrderNo;
+    document.getElementById('deliveryContent').innerHTML = accountInfo.split('\n').map(function(l){return '<div>'+l+'</div>';}).join('');
+    showStep(3);
+  } else {
+    await db.from('orders').update({ status:'paid' }).eq('order_no', curOrderNo);
+    document.getElementById('noStockOrderNo').textContent = curOrderNo;
+    ['step1','step2','step3'].forEach(function(id){document.getElementById(id).style.display='none';});
+    document.getElementById('stepNoStock').style.display='block';
+    document.getElementById('modalTitle').textContent='待处理';
+  }
 }
 
 // ===== 本地订单存储 =====
