@@ -790,7 +790,7 @@ async function loadCategories() {
 // ===== 加载商品 =====
 async function loadProducts() {
   document.getElementById('grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:#aaa;font-size:15px;">加载中...</div>';
-  const { data, error } = await db.from('products').select('*').eq('status', 1).order('sort_order');
+  const { data, error } = await db.from('products').select('*').eq('status', 1).order('id');
   if (error || !data) {
     document.getElementById('grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:#aaa;">加载失败，请刷新重试</div>';
     return;
