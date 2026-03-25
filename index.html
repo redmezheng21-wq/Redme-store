@@ -582,6 +582,19 @@ button { font-family: inherit; }
   </div>
 </div>
 
+<!-- ===== SKU选择弹窗 ===== -->
+<div class="modal-overlay" id="skuModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="skuTitle">选择规格</h3>
+      <button class="modal-close" onclick="document.getElementById('skuModal').classList.remove('show')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="skuList" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== 购买弹窗（三步式）===== -->
 <div class="modal-overlay" id="buyModal">
   <div class="modal">
@@ -805,34 +818,37 @@ async function loadProducts() {
 
 // ===== 渲染商品卡片 =====
 function render(list) {
-  document.getElementById('grid').innerHTML = list.length === 0
-    ? '<div style="grid-column:1/-1;text-align:center;padding:80px 0;color:var(--text-muted);font-size:15px;">暂无相关商品</div>'
-    : list.map(p => {
-      const img = p.image
-        ? `<img src="${p.image}" style="width:64px;height:64px;object-fit:cover;border-radius:10px">`
-        : `<span style="font-size:48px;line-height:1">${getIcon(p)}</span>`;
-      const badge = p.is_hot ? '<span class="card-tag hot">Hot</span>' : p.is_sale ? '<span class="card-tag sale">Sale</span>' : '';
-      const soldOut = p.stock === 0;
-      return `
-      <div class="card" onclick="openBuy(${p.id})">
-        <div class="card-img">
-          ${img}
-          ${badge}
-        </div>
-        <div class="card-body">
-          <div class="card-name">${p.name}</div>
-          <div class="card-info">
-            <span class="card-rating"><span class="card-star">★</span> ${p.sales>0?'4.9':'5.0'} (${p.sales||0} 已售)</span>
-          </div>
-          <div class="card-bottom">
-            <span class="card-price"><span class="sym">¥</span>${p.price}${p.original_price?`<span style="font-size:12px;color:var(--text-muted);text-decoration:line-through;margin-left:4px">¥${p.original_price}</span>`:''}</span>
-            <div class="card-actions">
-              <button class="btn-buy" ${soldOut?'disabled':''} onclick="event.stopPropagation();openBuy(${p.id})">${soldOut?'已售罄':'立即购买'}</button>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
+  if(list.length === 0) {
+    document.getElementById('grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:80px 0;color:var(--text-muted);font-size:15px;">暂无相关商品</div>';
+    return;
+  }
+  var seen = {};
+  var cards = list.map(function(p) {
+    var grp = p.sku_group;
+    if(grp) { if(seen[grp]) return ''; seen[grp] = true; }
+    var siblings = grp ? list.filter(function(x){return x.sku_group===grp;}) : [p];
+    var ids = JSON.stringify(siblings.map(function(x){return x.id;}));
+    var hasVariants = siblings.length > 1;
+    var displayName = grp ? (p.sku_group_name || p.name.replace(/[\u3010\u3011\[\]【】]/g,'').trim()) : p.name;
+    var minPrice = Math.min.apply(null, siblings.map(function(x){return parseFloat(x.price);}));
+    var soldOut = siblings.every(function(x){return x.stock===0;});
+    var img = p.image ? '<img src="'+p.image+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px">' : '<span style="font-size:48px;line-height:1">'+getIcon(p)+'</span>';
+    var badge = p.is_hot ? '<span class="card-tag hot">Hot</span>' : p.is_sale ? '<span class="card-tag sale">Sale</span>' : '';
+    var skuBadge = hasVariants ? '<span style="font-size:10px;background:#e8590c;color:#fff;padding:1px 6px;border-radius:4px;margin-left:4px">'+siblings.length+'款</span>' : '';
+    var btnText = soldOut ? '已售罄' : hasVariants ? '选规格' : '立即购买';
+    return '<div class="card" onclick="openBuyGroup('+ids+')">'+
+      '<div class="card-img">'+img+badge+'</div>'+
+      '<div class="card-body">'+
+        '<div class="card-name">'+displayName+skuBadge+'</div>'+
+        '<div class="card-info"><span class="card-rating"><span class="card-star">★</span> '+(p.sales>0?'4.9':'5.0')+' ('+(p.sales||0)+' 已售)</span></div>'+
+        '<div class="card-bottom">'+
+          '<span class="card-price"><span class="sym">¥</span>'+minPrice+(hasVariants?'<span style="font-size:11px;color:var(--text-muted)"> 起</span>':'')+'</span>'+
+          '<div class="card-actions"><button class="btn-buy" '+(soldOut?'disabled':'')+' onclick="event.stopPropagation();openBuyGroup('+ids+')">'+btnText+'</button></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).filter(Boolean);
+  document.getElementById('grid').innerHTML = cards.join('');
 }
 
 function getIcon(p) {
@@ -878,6 +894,39 @@ function sortProducts(type) {
 }
 
 // ===== 购买弹窗 =====
+// ===== SKU选规格 =====
+function openBuyGroup(ids) {
+  if(!ids || !ids.length) return;
+  if(ids.length === 1) { openBuy(ids[0]); return; }
+
+  const products = ids.map(id => allProducts.find(x => x.id === id)).filter(Boolean);
+  if(!products.length) return;
+
+  const groupName = products[0].sku_group_name || products[0].name.replace(/【.*?】/,'').trim();
+  document.getElementById('skuTitle').textContent = groupName + ' · 选择规格';
+  document.getElementById('skuList').innerHTML = products.map(function(p) {
+    var label = p.sku_label || (p.name.match(/[【[](.*?)[】\]]/)||[])[1] || p.name;
+    var soldOut = p.stock === 0;
+    var fn = soldOut ? '' : 'selectSku('+p.id+')';
+    var border = soldOut ? '#eee' : 'var(--border)';
+    return '<div onclick="'+fn+'" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1.5px solid '+border+';border-radius:10px;cursor:'+(soldOut?'not-allowed':'pointer')+';opacity:'+(soldOut?'0.5':'1')+'">'+
+      '<div>'+
+        '<div style="font-size:14px;font-weight:600;margin-bottom:3px">'+label+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted)">库存: '+(p.stock>=9999?'充足':p.stock)+(soldOut?' · 已售罄':'')+'</div>'+
+      '</div>'+
+      '<div style="font-size:18px;font-weight:700;color:var(--orange)">¥'+p.price+'</div>'+
+    '</div>';
+  }).join('');
+
+  document.getElementById('skuModal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function selectSku(id) {
+  document.getElementById('skuModal').classList.remove('show');
+  openBuy(id);
+}
+
 function openBuy(id) {
   const p = allProducts.find(x => x.id === id);
   if (!p || p.stock === 0) return;
@@ -893,7 +942,6 @@ function openBuy(id) {
   document.getElementById('qtyVal').value = 1;
   document.getElementById('mTotal').textContent = '¥' + parseFloat(p.price).toFixed(2);
   document.getElementById('buyContact').value = '';
-  document.getElementById('confirmAmount').value = '';
   curPayType = 'wx';
   document.getElementById('payWx').classList.add('active');
   document.getElementById('payAli').classList.remove('active');
@@ -1295,6 +1343,7 @@ function showPage(page) {
 }
 
 document.getElementById('buyModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.getElementById('skuModal').addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('show'); document.body.style.overflow=''; } });
 document.getElementById('orderModal').addEventListener('click', function(e) {
   if (e.target === this) { this.classList.remove('show'); document.body.style.overflow=''; }
 });
