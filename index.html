@@ -80,6 +80,27 @@ button { font-family: inherit; }
   background: linear-gradient(135deg, #ddd, #bbb);
   cursor: pointer;
 }
+/* ── Auth ── */
+.auth-btn {
+  padding: 8px 16px; border-radius: 8px; font-size: 13px;
+  font-weight: 600; cursor: pointer; border: none; font-family: inherit;
+  transition: all .15s;
+}
+.auth-btn-login { background: var(--bg-card); color: var(--text); border: 1.5px solid var(--border); }
+.auth-btn-login:hover { border-color: var(--accent); }
+.auth-btn-reg { background: var(--accent); color: #fff; }
+.auth-btn-reg:hover { background: var(--accent-hover); }
+.user-badge {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--border);
+  font-size: 13px; font-weight: 600; transition: border-color .15s;
+}
+.user-badge:hover { border-color: var(--accent); }
+.user-dot {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--accent);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
 
 /* ── Hero Banner ── */
 .hero {
@@ -480,9 +501,11 @@ button { font-family: inherit; }
     </div>
   </div>
   <div class="nav-right">
-    <div class="nav-icon" title="搜索">🔍</div>
     <div class="nav-icon" title="购物车">🛒<span class="nav-badge" id="cartBadge">0</span></div>
-    <div class="nav-avatar"></div>
+    <div id="authArea">
+      <button class="auth-btn auth-btn-login" onclick="openAuthModal('login')">登录</button>
+      <button class="auth-btn auth-btn-reg" onclick="openAuthModal('register')" style="margin-left:6px">注册</button>
+    </div>
     <button class="nav-ham" onclick="document.querySelector('.sidebar').classList.toggle('mob-open')">☰</button>
   </div>
 </nav>
@@ -555,6 +578,61 @@ button { font-family: inherit; }
   </div>
   <div class="footer-bottom">© 2026 RedMe Store · TikTok账号专营 · 全球直发</div>
 </footer>
+
+<!-- ===== 登录/注册弹窗 ===== -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <h3 id="authTitle">登录账号</h3>
+      <button class="modal-close" onclick="closeAuthModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid var(--border)">
+        <div id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px">登录</div>
+        <div id="tabReg" onclick="switchAuthTab('register')" style="flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-muted)">注册</div>
+      </div>
+
+      <!-- 登录表单 -->
+      <div id="formLogin">
+        <div class="field">
+          <label>邮箱地址</label>
+          <input type="email" id="loginEmail" placeholder="your@email.com">
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <input type="password" id="loginPwd" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <div id="loginErr" style="font-size:12px;color:#e8341a;margin-bottom:10px;display:none"></div>
+        <button class="modal-submit" onclick="doLogin()" id="loginBtn">登录</button>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--text-muted)">
+          还没有账号？<span onclick="switchAuthTab('register')" style="color:var(--accent);cursor:pointer">立即注册</span>
+        </div>
+      </div>
+
+      <!-- 注册表单 -->
+      <div id="formReg" style="display:none">
+        <div class="field">
+          <label>邮箱地址</label>
+          <input type="email" id="regEmail" placeholder="your@email.com">
+        </div>
+        <div class="field">
+          <label>设置密码（至少6位）</label>
+          <input type="password" id="regPwd" placeholder="至少6位密码">
+        </div>
+        <div class="field">
+          <label>确认密码</label>
+          <input type="password" id="regPwd2" placeholder="再次输入密码" onkeydown="if(event.key==='Enter')doRegister()">
+        </div>
+        <div id="regErr" style="font-size:12px;color:#e8341a;margin-bottom:10px;display:none"></div>
+        <div id="regOk" style="font-size:12px;color:#16a34a;margin-bottom:10px;display:none">✅ 注册成功！请查收邮箱验证邮件，验证后即可登录。</div>
+        <button class="modal-submit" onclick="doRegister()" id="regBtn">注册账号</button>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--text-muted)">
+          已有账号？<span onclick="switchAuthTab('login')" style="color:var(--accent);cursor:pointer">直接登录</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- 公告弹窗 -->
 <div id="noticeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;padding:20px">
@@ -752,9 +830,10 @@ const CONFIG = {
   payUrl: 'https://pay.yixuyun.com/',   // 接口地址
   pid: '1053',                           // 商户ID
   key: 'E5WdnedleEDSxedHMcNH7EhQzh7eD7D7', // MD5密钥
-  // 支付回调地址（Vercel部署后填你的域名）
-  notifyUrl: 'https://redme-store.vercel.app/notify.php',
+  // 支付回调地址（Cloudflare Worker）
+  notifyUrl: 'https://redme-pay.redmezheng21.workers.dev/notify',
   returnUrl: 'https://redme-store.vercel.app/',
+  workerUrl: 'https://redme-pay.redmezheng21.workers.dev',
   // TG客服
   serviceWx: 'https://t.me/Redmestore21',
   tgLink: 'https://t.me/Redmestore21',
@@ -1115,10 +1194,34 @@ function doPayNow() {
   document.getElementById('payNowBtn').textContent = '⏳ 等待付款中...';
   document.getElementById('payNowBtn').disabled = true;
 
-  // 显示手动确认按钮（用户付完款回来点）
-  setTimeout(function() {
-    var confirmBtn = document.getElementById('manualConfirmBtn');
-    if(confirmBtn) confirmBtn.style.display = 'block';
+  // 开始轮询支付状态（每3秒查一次，最多查60次=3分钟）
+  var pollCount = 0;
+  var pollTimer = setInterval(async function() {
+    pollCount++;
+    if(pollCount > 60) { clearInterval(pollTimer); return; }
+    try {
+      var res = await fetch(CONFIG.workerUrl + '/query?order_no=' + curOrderNo);
+      var data = await res.json();
+      if(data.status === 'shipped') {
+        clearInterval(pollTimer);
+        // 自动发货成功，显示账号
+        document.getElementById('resultOrderNo').textContent = curOrderNo;
+        document.getElementById('deliveryContent').innerHTML = data.account_info.split('\n').map(function(l){return '<div>'+l+'</div>';}).join('');
+        showStep(3);
+      } else if(data.status === 'paid') {
+        clearInterval(pollTimer);
+        // 已付款但无库存
+        document.getElementById('noStockOrderNo').textContent = curOrderNo;
+        ['step1','step2','step3'].forEach(function(id){document.getElementById(id).style.display='none';});
+        document.getElementById('stepNoStock').style.display='block';
+        document.getElementById('modalTitle').textContent='待处理';
+      }
+    } catch(e) {}
+    // 3分钟后显示手动确认按钮作为备选
+    if(pollCount === 20) {
+      var confirmBtn = document.getElementById('manualConfirmBtn');
+      if(confirmBtn) confirmBtn.style.display = 'block';
+    }
   }, 3000);
 }
 
@@ -1348,6 +1451,130 @@ document.getElementById('orderModal').addEventListener('click', function(e) {
   if (e.target === this) { this.classList.remove('show'); document.body.style.overflow=''; }
 });
 
+// ===== 用户认证（Supabase Auth）=====
+let currentUser = null;
+
+// 检查登录状态
+async function checkAuth() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session && session.user) {
+    currentUser = session.user;
+    renderUserBadge(session.user.email);
+  }
+  // 监听登录状态变化
+  db.auth.onAuthStateChange(function(event, session) {
+    if (session && session.user) {
+      currentUser = session.user;
+      renderUserBadge(session.user.email);
+    } else {
+      currentUser = null;
+      renderLoggedOut();
+    }
+  });
+}
+
+function renderUserBadge(email) {
+  var initial = (email || 'U')[0].toUpperCase();
+  var shortEmail = email.length > 16 ? email.slice(0,14)+'…' : email;
+  document.getElementById('authArea').innerHTML =
+    '<div class="user-badge" onclick="showUserMenu()">' +
+      '<div class="user-dot">'+initial+'</div>' +
+      '<span style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+shortEmail+'</span>' +
+    '</div>';
+}
+
+function renderLoggedOut() {
+  document.getElementById('authArea').innerHTML =
+    '<button class="auth-btn auth-btn-login" onclick="openAuthModal(\"login\")">登录</button>' +
+    '<button class="auth-btn auth-btn-reg" onclick="openAuthModal(\"register\")" style="margin-left:6px">注册</button>';
+}
+
+function showUserMenu() {
+  var email = currentUser ? currentUser.email : '';
+  if(confirm('账号：'+email+'\n\n点确定退出登录，点取消保持登录')) {
+    doLogout();
+  }
+}
+
+function openAuthModal(tab) {
+  switchAuthTab(tab);
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPwd').value = '';
+  document.getElementById('regEmail').value = '';
+  document.getElementById('regPwd').value = '';
+  document.getElementById('regPwd2').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('regErr').style.display = 'none';
+  document.getElementById('regOk').style.display = 'none';
+  document.getElementById('authModal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAuthModal() {
+  document.getElementById('authModal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function switchAuthTab(tab) {
+  var isLogin = tab === 'login';
+  document.getElementById('formLogin').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('formReg').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('tabLogin').style.cssText = isLogin
+    ? 'flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px'
+    : 'flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-muted)';
+  document.getElementById('tabReg').style.cssText = isLogin
+    ? 'flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-muted)'
+    : 'flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px';
+  document.getElementById('authTitle').textContent = isLogin ? '登录账号' : '注册账号';
+}
+
+async function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pwd = document.getElementById('loginPwd').value;
+  var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  if(!email || !pwd) { errEl.textContent='请填写邮箱和密码'; errEl.style.display='block'; return; }
+  btn.textContent = '登录中...'; btn.disabled = true;
+  var { data, error } = await db.auth.signInWithPassword({ email, password: pwd });
+  if(error) {
+    errEl.textContent = error.message.includes('Invalid') ? '邮箱或密码错误' : error.message;
+    errEl.style.display = 'block';
+  } else {
+    closeAuthModal();
+  }
+  btn.textContent = '登录'; btn.disabled = false;
+}
+
+async function doRegister() {
+  var email = document.getElementById('regEmail').value.trim();
+  var pwd = document.getElementById('regPwd').value;
+  var pwd2 = document.getElementById('regPwd2').value;
+  var errEl = document.getElementById('regErr');
+  var okEl = document.getElementById('regOk');
+  var btn = document.getElementById('regBtn');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if(!email) { errEl.textContent='请填写邮箱'; errEl.style.display='block'; return; }
+  if(pwd.length < 6) { errEl.textContent='密码至少6位'; errEl.style.display='block'; return; }
+  if(pwd !== pwd2) { errEl.textContent='两次密码不一致'; errEl.style.display='block'; return; }
+  btn.textContent = '注册中...'; btn.disabled = true;
+  var { data, error } = await db.auth.signUp({ email, password: pwd });
+  if(error) {
+    errEl.textContent = error.message.includes('already') ? '该邮箱已注册，请直接登录' : error.message;
+    errEl.style.display = 'block';
+  } else {
+    okEl.style.display = 'block';
+    // 保存用户到 customers 表
+    await db.from('customers').upsert({ email, created_at: new Date().toISOString() }, { onConflict: 'email' }).then(function(){}).catch(function(){});
+    setTimeout(function(){ switchAuthTab('login'); }, 3000);
+  }
+  btn.textContent = '注册账号'; btn.disabled = false;
+}
+
+async function doLogout() {
+  await db.auth.signOut();
+  renderLoggedOut();
+}
+
 // ===== 公告弹窗 =====
 function closeNotice() {
   document.getElementById('noticeModal').style.display = 'none';
@@ -1360,9 +1587,14 @@ function showNotice() {
 }
 
 // ===== 初始化 =====
+checkAuth();
 loadCategories();
 loadProducts();
 setTimeout(showNotice, 800);
+
+document.getElementById('authModal').addEventListener('click', function(e) {
+  if(e.target === this) closeAuthModal();
+});
 </script>
 </body>
 </html>
