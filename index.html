@@ -503,10 +503,7 @@ button { font-family: inherit; }
   </div>
   <div class="nav-right">
     <div class="nav-icon" title="购物车">🛒<span class="nav-badge" id="cartBadge">0</span></div>
-    <div id="authArea">
-      <button class="auth-btn auth-btn-login" onclick="openAuthModal('login')">登录</button>
-      <button class="auth-btn auth-btn-reg" onclick="openAuthModal('register')" style="margin-left:6px">注册</button>
-    </div>
+    <a href="https://t.me/Redmestore21" target="_blank" style="font-size:12px;font-weight:600;color:#229ED9;text-decoration:none;padding:7px 14px;border:1.5px solid #229ED9;border-radius:8px;display:flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="#229ED9"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/></svg>TG客服</a>
     <button class="nav-ham" onclick="document.querySelector('.sidebar').classList.toggle('mob-open')">☰</button>
   </div>
 </nav>
@@ -529,9 +526,7 @@ button { font-family: inherit; }
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-title">Category</div>
-      <div class="sidebar-item active" onclick="selectCat(this,'all')">
-        <span class="icon">📦</span> 全部商品
-      </div>
+
       <div id="cat-list"><!-- 动态加载分类 --></div>
     </div>
 
@@ -574,19 +569,6 @@ button { font-family: inherit; }
   </div>
   <div class="footer-bottom">© 2026 RedMe Store · TikTok账号专营 · 全球直发</div>
 </footer>
-
-<!-- ===== 登录/注册弹窗 ===== -->
-<div class="modal-overlay" id="authModal">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-head">
-      <h3 id="authTitle">登录账号</h3>
-      <button class="modal-close" onclick="closeAuthModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid var(--border)">
-        <div id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px">登录</div>
-        <div id="tabReg" onclick="switchAuthTab('register')" style="flex:1;text-align:center;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-muted)">注册</div>
-      </div>
 
       <!-- 登录表单 -->
       <div id="formLogin">
@@ -713,13 +695,13 @@ button { font-family: inherit; }
           </div>
         </div>
         <label style="font-size:13px;font-weight:600;color:var(--text-sec);margin-bottom:8px;display:block;">选择支付方式</label>
-        <div class="pay-row">
-          <div class="pay-opt active" id="payWx" onclick="selPay('wx')">
-            <div class="pi">💚</div><div class="pl">微信支付</div>
+        <div style="background:#f0f8ff;border:1.5px solid #1677ff;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="font-size:28px">💙</div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:#1677ff">支付宝支付</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">安全快捷 · 自动发货</div>
           </div>
-          <div class="pay-opt" id="payAli" onclick="selPay('ali')">
-            <div class="pi">🔵</div><div class="pl">支付宝</div>
-          </div>
+          <div style="margin-left:auto;font-size:11px;color:#1677ff;font-weight:600">唯一支付方式</div>
         </div>
         <div class="modal-total">
           <span class="modal-total-label">应付金额</span>
@@ -881,7 +863,7 @@ const CONFIG = {
   key: 'E5WdnedleEDSxedHMcNH7EhQzh7eD7D7', // MD5密钥
   // 支付回调地址（Cloudflare Worker）
   notifyUrl: 'https://redme-pay.redmezheng21.workers.dev/notify',
-  returnUrl: 'https://redme-store.vercel.app/',
+  returnUrl: 'https://redme.store/',
   workerUrl: 'https://redme-pay.redmezheng21.workers.dev',
   // TG客服
   serviceWx: 'https://t.me/Redmestore21',
@@ -921,11 +903,12 @@ async function loadCategories() {
   const { data } = await db.from('categories').select('*').order('sort_order');
   const list = document.getElementById('cat-list');
   if (!data || !data.length) return;
-  list.innerHTML = data.map(c => {
+  list.innerHTML = data.map((c, idx) => {
+    if(idx === 0) { curCat = c.name; }
     const icon = (c.icon||'').startsWith('data:') || (c.icon||'').startsWith('http')
       ? `<img src="${c.icon}" style="width:20px;height:20px;object-fit:cover;border-radius:4px;vertical-align:middle">`
       : `<span class="icon">${c.icon||'📦'}</span>`;
-    return `<div class="sidebar-item" onclick="selectCat(this,'${c.name}')">
+    return `<div class="sidebar-item ${idx===0?'active':''}" onclick="selectCat(this,'${c.name}')">
       ${icon} ${c.name}
     </div>`;
   }).join('');
@@ -1072,9 +1055,7 @@ function openBuy(id) {
   document.getElementById('qtyVal').value = 1;
   document.getElementById('mTotal').textContent = '¥' + parseFloat(p.price).toFixed(2);
   document.getElementById('buyContact').value = '';
-  curPayType = 'wx';
-  document.getElementById('payWx').classList.add('active');
-  document.getElementById('payAli').classList.remove('active');
+  curPayType = 'ali';
   showStep(1);
   document.getElementById('buyModal').classList.add('show');
   document.body.style.overflow = 'hidden';
@@ -1095,11 +1076,7 @@ function chgQty(d) {
   document.getElementById('mTotal').textContent = '¥' + total;
 }
 
-function selPay(type) {
-  curPayType = type;
-  document.getElementById('payWx').classList.toggle('active', type === 'wx');
-  document.getElementById('payAli').classList.toggle('active', type === 'ali');
-}
+function selPay(type) { curPayType = type; }
 
 // 步骤切换
 function showStep(n) {
@@ -1168,8 +1145,7 @@ function goStep2() {
   const qty = parseInt(document.getElementById('qtyVal').value) || 1;
   const total = (parseFloat(curProduct.price) * qty).toFixed(2);
   document.getElementById('qrAmount').textContent = '¥' + total;
-  const isWx = curPayType === 'wx';
-  document.getElementById('qrPayType').textContent = isWx ? '微信支付' : '支付宝支付';
+  document.getElementById('qrPayType').textContent = '支付宝扫码支付';
   showStep(2);
 }
 
@@ -1207,11 +1183,11 @@ function doPayNow() {
     total: total,
     contact: contact,
     status: 'pending',
-    pay_type: curPayType === 'wx' ? '微信' : '支付宝',
+    pay_type: '支付宝',
   }).then(function(){}).catch(function(){});
 
   // 构建易支付签名
-  var payType = curPayType === 'wx' ? 'wxpay' : 'alipay';
+  var payType = 'alipay'; // 只支持支付宝
   var params = {
     pid: CONFIG.pid,
     type: payType,
