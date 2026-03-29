@@ -204,11 +204,20 @@ button { font-family: inherit; }
 }
 .card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); border-color: #ccc; background: #fafafa; }
 .card-img {
-  position: relative; background: var(--bg-card);
-  width: 48px; height: 48px; min-width: 48px; border-radius: 10px;
+  position: relative; 
+  width: 56px; height: 56px; min-width: 56px; border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 24px; flex-shrink: 0;
+  font-size: 26px; flex-shrink: 0; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
 }
+.card-img.grad-tiktok { background: linear-gradient(135deg,#010101 0%,#1a1a2e 100%); }
+.card-img.grad-fire   { background: linear-gradient(135deg,#f9731a 0%,#dc2626 100%); }
+.card-img.grad-blue   { background: linear-gradient(135deg,#2563eb 0%,#7c3aed 100%); }
+.card-img.grad-green  { background: linear-gradient(135deg,#16a34a 0%,#059669 100%); }
+.card-img.grad-gold   { background: linear-gradient(135deg,#d97706 0%,#b45309 100%); }
+.card-img.grad-pink   { background: linear-gradient(135deg,#ec4899 0%,#a855f7 100%); }
+.card-img.grad-sky    { background: linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%); }
+.card-img img { width:100%; height:100%; object-fit:cover; border-radius:14px; }
 .card-tag {
   position: absolute; top: 12px; right: 12px;
   padding: 4px 12px; border-radius: 6px; font-size: 11px;
@@ -270,13 +279,22 @@ button { font-family: inherit; }
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.35);
   backdrop-filter: blur(6px); z-index: 300;
-  display: none; align-items: center; justify-content: center; padding: 24px;
+  display: none; align-items: center; justify-content: center;
+  padding: 16px; overflow-y: auto;
 }
 .modal-overlay.show { display: flex; }
 .modal {
   background: var(--white); border-radius: 20px;
   width: 100%; max-width: 480px; box-shadow: 0 24px 64px rgba(0,0,0,0.15);
   animation: modalUp 0.3s ease;
+  max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  margin: auto;
+}
+@media (max-width: 480px) {
+  .modal-overlay { padding: 8px; align-items: flex-end; }
+  .modal { border-radius: 20px 20px 14px 14px; max-height: 88vh; }
+  .modal-head { padding: 16px 20px; }
+  .modal-body { padding: 16px 20px; }
 }
 @keyframes modalUp {
   from { opacity: 0; transform: translateY(20px); }
@@ -450,7 +468,7 @@ button { font-family: inherit; }
   .sidebar-item .icon { display: none; }
   .sidebar-divider { display: none; }
   .grid { gap: 6px; }
-  .card-img { width: 40px; height: 40px; min-width: 40px; font-size: 20px; }
+  .card-img { width: 44px; height: 44px; min-width: 44px; font-size: 20px; border-radius: 10px; }
   .card-body { padding: 14px 14px 16px; }
   .card-name { font-size: 13px; }
   .card-price { font-size: 18px; }
@@ -540,7 +558,7 @@ button { font-family: inherit; }
   <!-- Products -->
   <section class="products-area">
     <div class="products-header">
-      <div class="products-title" id="gridTitle">All Product <span id="totalCount" style="font-size:13px;font-weight:400;color:var(--text-muted)"></span></div>
+      <div class="products-title" id="gridTitle">All Product</div>
       <div class="products-sort">
         <button class="sort-btn active" onclick="setSortBtn(this,'default')">推荐</button>
         <button class="sort-btn" onclick="setSortBtn(this,'low')">价格↑</button>
@@ -577,12 +595,15 @@ button { font-family: inherit; }
 
 <!-- 登录/注册弹窗 -->
 <div class="modal-overlay" id="authModal">
-  <div style="background:#fff;border-radius:16px;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.3)">
-    <div style="display:flex;border-bottom:2px solid var(--border);padding:0 24px">
-      <div id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;text-align:center;padding:14px;font-size:14px;font-weight:600;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px">登录</div>
-      <div id="tabReg" onclick="switchAuthTab('register')" style="flex:1;text-align:center;padding:14px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-muted)">注册</div>
+  <div class="modal">
+    <div class="modal-head">
+      <div style="display:flex;width:100%;gap:0">
+        <div id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;text-align:center;padding:4px 0;font-size:14px;font-weight:600;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent)">登录</div>
+        <div id="tabReg" onclick="switchAuthTab('register')" style="flex:1;text-align:center;padding:4px 0;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent">注册</div>
+      </div>
+      <button class="modal-close" onclick="closeAuthModal()">✕</button>
     </div>
-    <div style="padding:24px">
+    <div class="modal-body">
       <!-- 登录表单 -->
       <div id="formLogin">
         <div class="field">
@@ -955,12 +976,15 @@ function render(list) {
     var displayName = grp ? (p.sku_group_name || p.name.replace(/[\u3010\u3011\[\]【】]/g,'').trim()) : p.name;
     var minPrice = Math.min.apply(null, siblings.map(function(x){return parseFloat(x.price);}));
     var soldOut = siblings.every(function(x){return x.stock===0;});
-    var img = p.image ? '<img src="'+p.image+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px">' : '<span style="font-size:48px;line-height:1">'+getIcon(p)+'</span>';
+    var icon = getIcon(p);
+    var img = p.image
+      ? '<div class="card-img"><img src="'+p.image+'" alt="'+displayName+'"></div>'
+      : '<div class="card-img '+icon.cls+'" style="font-size:26px">'+icon.emoji+'</div>';
     var badge = p.is_hot ? '<span class="card-tag hot">Hot</span>' : p.is_sale ? '<span class="card-tag sale">Sale</span>' : '';
     var skuBadge = hasVariants ? '<span style="font-size:10px;background:#e8590c;color:#fff;padding:1px 6px;border-radius:4px;margin-left:4px">'+siblings.length+'款</span>' : '';
     var btnText = soldOut ? '已售罄' : hasVariants ? '选规格' : '立即购买';
     return '<div class="card" onclick="openBuyGroup('+ids+')">'+
-      '<div class="card-img">'+img+'</div>'+
+      img+
       '<div class="card-body">'+
         '<div style="flex:1;min-width:0">'+
           '<div class="card-name">'+displayName+skuBadge+'</div>'+
@@ -977,12 +1001,19 @@ function render(list) {
 }
 
 function getIcon(p) {
-  if(p.category==='游戏CDK') return '🎮';
-  if(p.category==='充值点卡') return '💳';
-  if(p.category==='游戏币') return '🪙';
-  if(p.category==='会员账号') return '👤';
-  if(p.category==='流媒体') return '🎬';
-  return '📦';
+  var cat = p.category || '';
+  if(cat.includes('TikTok') || cat.includes('tiktok')) return {cls:'grad-tiktok', emoji:'🎵'};
+  if(cat.includes('白号')) return {cls:'grad-sky', emoji:'✨'};
+  if(cat.includes('老号') || cat.includes('带粉')) return {cls:'grad-tiktok', emoji:'⭐'};
+  if(cat.includes('直播')) return {cls:'grad-fire', emoji:'🔴'};
+  if(cat.includes('自然流')) return {cls:'grad-green', emoji:'🌿'};
+  if(cat.includes('谷歌') || cat.includes('邮箱')) return {cls:'grad-blue', emoji:'📧'};
+  if(cat.includes('苹果') || cat.includes('Apple')) return {cls:'grad-sky', emoji:'🍎'};
+  if(cat.includes('Instagram') || cat.includes('ins')) return {cls:'grad-pink', emoji:'📸'};
+  if(cat.includes('API') || cat.includes('接口')) return {cls:'grad-gold', emoji:'🔑'};
+  if(cat.includes('游戏') || cat.includes('CDK')) return {cls:'grad-fire', emoji:'🎮'};
+  if(cat.includes('会员')) return {cls:'grad-gold', emoji:'👑'};
+  return {cls:'grad-tiktok', emoji:'📦'};
 }
 
 function getFiltered() {
